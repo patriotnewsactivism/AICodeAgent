@@ -156,8 +156,37 @@ export default function App() {
     setFileTree(buildFileTree(files));
   }, [files]);
 
-  const activeFile = useMemo(() => 
-    files.find(f => f.path === activeFilePath), 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyboard = (e) => {
+      // Ctrl/Cmd + S: Save (trigger preview refresh)
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleRefreshPreview();
+      }
+      // Ctrl/Cmd + /: Toggle AI agent panel (mobile)
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        e.preventDefault();
+        setMobileView('agent');
+      }
+      // F5: Refresh preview
+      if (e.key === 'F5') {
+        e.preventDefault();
+        handleRefreshPreview();
+      }
+      // Ctrl/Cmd + P: Quick file search (focus search)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        document.querySelector('input[placeholder*="Search"]')?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyboard);
+    return () => window.removeEventListener('keydown', handleKeyboard);
+  }, []);
+
+  const activeFile = useMemo(() =>
+    files.find(f => f.path === activeFilePath),
     [files, activeFilePath]
   );
 
@@ -224,12 +253,19 @@ export default function App() {
       return;
     }
 
+    // Check for API key
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
+    if (!apiKey) {
+      setError("⚠️ Gemini API key not found. Please add VITE_GEMINI_API_KEY to your .env file. Get your key at https://ai.google.dev");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setAgentLog("Contacting AI agent...");
 
-    const apiKey = ""; // API key is handled by the environment
-    const apiUrl = `https://generativelace.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+    const modelName = import.meta.env.VITE_MODEL_NAME || "gemini-2.0-flash-exp";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     
     // Provide context to the AI
     const fileList = files.map(f => f.path);
