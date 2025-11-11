@@ -18,6 +18,10 @@
 
 | Feature | Replit | Lovable | **CodeVibe V2** |
 |---------|--------|---------|-----------------|
+| **Multi-Agent System** | ⚠️ Basic | ⚠️ Basic | ✅ **5 Specialized Agents** |
+| **Code Quality Review** | ❌ No | ⚠️ Limited | ✅ **Architect Agent (0-100 Score)** |
+| **SEO Optimization** | ❌ No | ❌ No | ✅ **Full SEO Agent** |
+| **Planning Phase** | ⚠️ Limited | ⚠️ Limited | ✅ **Dedicated Planning Agent** |
 | **AI-First Architecture** | ⚠️ Bolted-on | ✅ Yes | ✅ **Native & Extensible** |
 | **Real-Time Preview** | ✅ Yes | ✅ Yes | ✅ **Instant + Auto-Refresh** |
 | **Privacy-First** | ❌ Cloud-only | ❌ Proprietary | ✅ **Self-Hostable** |
@@ -70,6 +74,17 @@ npm run dev
 ---
 
 ## ✨ Features
+
+### 🎭 **NEW: Multi-Agent System** (v2.1)
+- **🚀 Full Workflow (Plan → Code → Review)**: Professional development pipeline with automatic quality assurance
+- **📋 Planning Agent**: Breaks down complex tasks into actionable steps with dependency analysis
+- **💻 Coding Agent**: Generates production-quality code following best practices
+- **🔍 Architect Agent**: Reviews code with scoring (0-100) for security, performance, accessibility
+- **🎯 SEO Agent**: Complete HTML optimization with meta tags, Open Graph, Twitter Cards, Schema.org
+- **⚡ Multiple Workflow Modes**: Full, Quick, Planning-only, Review-only
+- **🔄 Iterative Improvement**: Automatically fixes issues until code meets quality standards
+
+See [MULTI_AGENT_SYSTEM.md](MULTI_AGENT_SYSTEM.md) for complete documentation.
 
 ### 🤖 AI-Powered Development
 - **Natural Language to Code**: Describe features, get production-ready HTML/CSS/JS
@@ -134,11 +149,19 @@ npm run dev
 ```
 AICodeAgent/
 ├── src/
+│   ├── agents/             # Multi-agent system
+│   │   ├── BaseAgent.js           # Base class for all agents
+│   │   ├── PlanningAgent.js       # Task planning & decomposition
+│   │   ├── CodingAgent.js         # Code generation
+│   │   ├── ArchitectAgent.js      # Code review & quality
+│   │   ├── SEOAgent.js            # SEO optimization
+│   │   └── AgentOrchestrator.js   # Multi-agent coordination
 │   ├── App.js              # Main application component (4 panels)
 │   └── main.jsx            # React 18 entry point
 ├── index.html              # Vite HTML template
 ├── vite.config.js          # Build configuration
 ├── package.json            # Dependencies & scripts
+├── MULTI_AGENT_SYSTEM.md   # Multi-agent documentation
 ├── .gitignore              # Git exclusion rules
 ├── dist/                   # Production build output
 └── outputs/                # Generated workspace files
@@ -375,6 +398,10 @@ const FILE_HANDLERS = {
 - [x] Live preview
 - [x] Dark/light mode
 - [x] Mobile responsive
+- [x] Multi-agent system (Planning, Coding, Architect agents)
+- [x] SEO optimization agent
+- [x] Code quality scoring (0-100)
+- [x] Iterative improvement workflow
 
 ### Phase 2: Collaboration (🚧 In Progress)
 - [ ] Real-time multiplayer editing

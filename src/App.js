@@ -1,11 +1,13 @@
 <content>import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  FileCode, Play, Sparkles, Loader2, TriangleAlert, Bot, User, CornerDownLeft, 
+import {
+  FileCode, Play, Sparkles, Loader2, TriangleAlert, Bot, User, CornerDownLeft,
   Terminal, Github, FilePlus, Trash2, FolderGit2, UploadCloud, DownloadCloud,
   ChevronDown, ChevronRight, Menu, X, LayoutPanelLeft, BrainCircuit, Code, MonitorPlay,
   Search, Save, FileUp, FileDown, FolderPlus, RefreshCw, Settings, Moon, Sun,
-  Zap, Eye, EyeOff, Copy, Check, Folder, File, History, Share2, ExternalLink
+  Zap, Eye, EyeOff, Copy, Check, Folder, File, History, Share2, ExternalLink,
+  Layers, Shield, Target, ListChecks, Gauge
 } from 'lucide-react';
+import { AgentOrchestrator } from './agents/AgentOrchestrator.js';
 
 // --- Default File Structure ---
 const defaultFiles = [
@@ -134,7 +136,24 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [agentLog, setAgentLog] = useState("Agent standing by...");
-  
+
+  // Multi-Agent State
+  const [orchestrator] = useState(() => new AgentOrchestrator());
+  const [workflowType, setWorkflowType] = useState('full'); // 'full', 'quick', 'seo', 'planning', 'review'
+  const [showSEOModal, setShowSEOModal] = useState(false);
+  const [seoOptions, setSeoOptions] = useState({
+    keywords: [],
+    keyPhrase: '',
+    title: '',
+    description: '',
+    author: '',
+    siteName: '',
+    imageUrl: '',
+    url: '',
+    twitterHandle: ''
+  });
+  const [reviewScore, setReviewScore] = useState(null);
+
   // GitHub Sim State
   const [isGithubAuthed, setIsGithubAuthed] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -246,7 +265,7 @@ export default function App() {
     return htmlContent;
   };
 
-  // --- Function to call Gemini API ---
+  // --- Function to execute multi-agent workflow ---
   const handleGenerateCode = useCallback(async () => {
     if (!prompt) {
       setError("Please enter a prompt for the AI agent.");
@@ -262,93 +281,57 @@ export default function App() {
 
     setIsLoading(true);
     setError(null);
-    setAgentLog("Contacting AI agent...");
-
-    const modelName = import.meta.env.VITE_MODEL_NAME || "gemini-2.0-flash-exp";
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-    
-    // Provide context to the AI
-    const fileList = files.map(f => f.path);
-    const contextPrompt = `
-      User Prompt: "${prompt}"
-
-      Current File List:
-      ${JSON.stringify(fileList)}
-
-      Currently Active File ("${activeFile?.path}"):
-      ---
-      ${activeFile?.content || 'No file is active.'}
-      ---
-    `;
-
-    const payload = {
-      contents: [{ parts: [{ text: contextPrompt }] }],
-      systemInstruction: {
-        parts: [{ text: systemPrompt }]
-      },
-      generationConfig: {
-        responseMimeType: "application/json",
-      }
-    };
+    setReviewScore(null);
+    orchestrator.clearLogs();
 
     try {
-      const result = await fetchWithBackoff(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      let result;
 
-      const candidate = result.candidates?.[0];
-      if (!candidate || !candidate.content?.parts?.[0]?.text) {
-        throw new Error("Invalid response structure from API.");
+      switch (workflowType) {
+        case 'full':
+          setAgentLog("🚀 Starting full multi-agent workflow (Plan → Code → Review)...");
+          result = await orchestrator.executeFullWorkflow(prompt, files, activeFile, {
+            maxIterations: 2,
+            strictMode: false
+          });
+          setAgentLog(orchestrator.getLogsAsString());
+          setReviewScore(result.review);
+          applyFileOperations(result.operations);
+          break;
+
+        case 'quick':
+          setAgentLog("⚡ Starting quick workflow (Code → Review)...");
+          result = await orchestrator.executeQuickWorkflow(prompt, files, activeFile);
+          setAgentLog(orchestrator.getLogsAsString());
+          setReviewScore(result.review);
+          applyFileOperations(result.operations);
+          break;
+
+        case 'seo':
+          // SEO workflow handled by separate button
+          setError("Use the 'SEO Optimize' button for SEO optimization");
+          return;
+
+        case 'planning':
+          setAgentLog("📋 Creating implementation plan...");
+          result = await orchestrator.executePlanningWorkflow(prompt, files, activeFile);
+          setAgentLog(orchestrator.getLogsAsString() + '\n\n' + JSON.stringify(result.plan, null, 2));
+          break;
+
+        case 'review':
+          setAgentLog("🔍 Reviewing current code...");
+          result = await orchestrator.executeReviewWorkflow(files);
+          setAgentLog(orchestrator.getLogsAsString() + '\n\n' + JSON.stringify(result.review, null, 2));
+          setReviewScore(result.review);
+          break;
+
+        default:
+          setError("Unknown workflow type");
+          return;
       }
 
-      const jsonResponse = JSON.parse(candidate.content.parts[0].text);
-      setAgentLog(jsonResponse.thought || "Agent executed plan.");
-
-      // Apply file operations
-      setFiles(currentFiles => {
-        let newFiles = [...currentFiles];
-        for (const op of jsonResponse.operations) {
-          switch (op.action) {
-            case 'create_file':
-              if (newFiles.find(f => f.path === op.path)) {
-                setAgentLog(prev => prev + `\n- WARN: File ${op.path} already exists. Updating it.`);
-                newFiles = newFiles.map(f => f.path === op.path ? { ...f, content: op.content } : f);
-              } else {
-                newFiles.push({ path: op.path, content: op.content });
-                setAgentLog(prev => prev + `\n- Created: ${op.path}`);
-              }
-              // Set new file as active
-              setActiveFilePath(op.path); 
-              break;
-            case 'update_file':
-              if (!newFiles.find(f => f.path === op.path)) {
-                setAgentLog(prev => prev + `\n- WARN: File ${op.path} not found. Creating it.`);
-                newFiles.push({ path: op.path, content: op.content });
-              } else {
-                newFiles = newFiles.map(f => f.path === op.path ? { ...f, content: op.content } : f);
-                setAgentLog(prev => prev + `\n- Updated: ${op.path}`);
-              }
-              // Ensure updated file is active
-              setActiveFilePath(op.path);
-              break;
-            case 'delete_file':
-              newFiles = newFiles.filter(f => f.path !== op.path);
-              setAgentLog(prev => prev + `\n- Deleted: ${op.path}`);
-              if (activeFilePath === op.path) {
-                setActiveFilePath(newFiles.length > 0 ? newFiles[0].path : null);
-              }
-              break;
-            default:
-              console.warn(`Unknown operation: ${op.action}`);
-          }
-        }
-        return newFiles;
-      });
-
       // Auto-run preview if enabled
-      if (autoPreview) {
+      if (autoPreview && ['full', 'quick'].includes(workflowType)) {
         setTimeout(() => {
           handleRunCode();
         }, 1000);
@@ -356,16 +339,82 @@ export default function App() {
 
     } catch (err) {
       console.error(err);
-      let errorMsg = `Failed to get valid AI response. ${err.message}`;
-      if (err instanceof SyntaxError) {
-        errorMsg = "AI returned invalid JSON. Check console for details.";
-      }
-      setError(errorMsg);
-      setAgentLog(`Error: ${errorMsg}`);
+      setError(`Multi-agent workflow failed: ${err.message}`);
+      setAgentLog(`Error: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
-  }, [prompt, systemPrompt, files, activeFile, autoPreview]);
+  }, [prompt, workflowType, files, activeFile, autoPreview, orchestrator]);
+
+  // --- Helper to apply file operations ---
+  const applyFileOperations = useCallback((operations) => {
+    setFiles(currentFiles => {
+      let newFiles = [...currentFiles];
+      for (const op of operations) {
+        switch (op.action) {
+          case 'create_file':
+            if (newFiles.find(f => f.path === op.path)) {
+              newFiles = newFiles.map(f => f.path === op.path ? { ...f, content: op.content } : f);
+            } else {
+              newFiles.push({ path: op.path, content: op.content });
+            }
+            setActiveFilePath(op.path);
+            break;
+          case 'update_file':
+            if (!newFiles.find(f => f.path === op.path)) {
+              newFiles.push({ path: op.path, content: op.content });
+            } else {
+              newFiles = newFiles.map(f => f.path === op.path ? { ...f, content: op.content } : f);
+            }
+            setActiveFilePath(op.path);
+            break;
+          case 'delete_file':
+            newFiles = newFiles.filter(f => f.path !== op.path);
+            if (activeFilePath === op.path) {
+              setActiveFilePath(newFiles.length > 0 ? newFiles[0].path : null);
+            }
+            break;
+          default:
+            console.warn(`Unknown operation: ${op.action}`);
+        }
+      }
+      return newFiles;
+    });
+  }, [activeFilePath]);
+
+  // --- SEO Optimization Handler ---
+  const handleSEOOptimize = useCallback(async () => {
+    const htmlFile = files.find(f => f.path === 'index.html');
+    if (!htmlFile) {
+      setError("No index.html file found to optimize");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    orchestrator.clearLogs();
+
+    try {
+      setAgentLog("🎯 Starting SEO optimization...");
+      const result = await orchestrator.executeSEOWorkflow(htmlFile.content, seoOptions);
+      setAgentLog(orchestrator.getLogsAsString() + '\n\n' + JSON.stringify(result.optimized, null, 2));
+
+      // Update the HTML file with optimized version
+      setFiles(currentFiles =>
+        currentFiles.map(f =>
+          f.path === 'index.html' ? { ...f, content: result.optimized.optimizedHtml } : f
+        )
+      );
+
+      setShowSEOModal(false);
+    } catch (err) {
+      console.error(err);
+      setError(`SEO optimization failed: ${err.message}`);
+      setAgentLog(`Error: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [files, seoOptions, orchestrator]);
 
   // --- Function to run the code in the editor ---
   const handleRunCode = () => {
@@ -681,9 +730,9 @@ export default function App() {
     <div className={`flex flex-col ${className}`}>
       <div className="flex-shrink-0 p-4 border-b border-gray-700">
         <div className="flex items-center mb-2">
-          <BrainCircuit className="w-5 h-5 mr-2 text-blue-400" />
-          <h2 className="text-lg font-semibold">AI Agent</h2>
-          <button 
+          <Layers className="w-5 h-5 mr-2 text-blue-400" />
+          <h2 className="text-lg font-semibold">Multi-Agent System</h2>
+          <button
             onClick={() => setShowSettings(!showSettings)}
             className="ml-auto text-gray-400 hover:text-white"
             title="Settings"
@@ -691,28 +740,74 @@ export default function App() {
             <Settings className="w-4 h-4" />
           </button>
         </div>
-        
+
+        {/* Workflow Type Selector */}
+        <div className="mb-3">
+          <label className="text-xs text-gray-400 mb-1 block">Workflow Mode:</label>
+          <select
+            value={workflowType}
+            onChange={(e) => setWorkflowType(e.target.value)}
+            className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="full">🚀 Full (Plan → Code → Review)</option>
+            <option value="quick">⚡ Quick (Code → Review)</option>
+            <option value="planning">📋 Planning Only</option>
+            <option value="review">🔍 Review Only</option>
+          </select>
+        </div>
+
+        {/* Review Score Display */}
+        {reviewScore && (
+          <div className="mb-3 p-3 bg-gray-800 rounded-md border border-gray-700">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-gray-400">Code Quality Score</span>
+              <span className={`text-lg font-bold ${
+                reviewScore.overallScore >= 90 ? 'text-green-400' :
+                reviewScore.overallScore >= 80 ? 'text-blue-400' :
+                reviewScore.overallScore >= 70 ? 'text-yellow-400' : 'text-red-400'
+              }`}>
+                {reviewScore.overallScore}/100
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">Status</span>
+              <span className={`text-xs font-semibold ${
+                reviewScore.approved ? 'text-green-400' : 'text-yellow-400'
+              }`}>
+                {reviewScore.approved ? '✓ Approved' : '⚠ Needs Work'}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Settings Panel */}
         {showSettings && (
-          <div className="mb-3 p-3 bg-gray-800 rounded-md">
+          <div className="mb-3 p-3 bg-gray-800 rounded-md space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-sm flex items-center">
                 <Eye className="w-4 h-4 mr-2" />
                 Auto Preview
               </label>
-              <div 
+              <div
                 onClick={() => setAutoPreview(!autoPreview)}
                 className={`relative inline-flex h-5 w-9 items-center rounded-full cursor-pointer ${
                   autoPreview ? 'bg-blue-600' : 'bg-gray-600'
                 }`}
               >
-                <span 
+                <span
                   className={`inline-block h-3 w-3 transform rounded-full bg-white transition ${
                     autoPreview ? 'translate-x-5' : 'translate-x-1'
                   }`}
                 />
               </div>
             </div>
+            <button
+              onClick={() => setShowSEOModal(true)}
+              className="w-full flex items-center justify-center p-2 rounded-md text-sm bg-purple-600 hover:bg-purple-700"
+            >
+              <Target className="w-4 h-4 mr-2" />
+              SEO Optimize HTML
+            </button>
           </div>
         )}
         
@@ -951,6 +1046,142 @@ export default function App() {
             This will simulate pushing your current files to a mock GitHub repository.
           </p>
         </GitHubModal>
+      )}
+      {showSEOModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl my-8">
+            <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+              <div className="flex items-center">
+                <Target className="w-5 h-5 mr-2 text-purple-400" />
+                <h3 className="text-lg font-semibold">SEO Optimization</h3>
+              </div>
+              <button onClick={() => setShowSEOModal(false)} className="text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
+              <p className="text-sm text-gray-300">
+                Optimize your HTML for search engines and social media with keywords, meta tags, schema markup, and more.
+              </p>
+
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">Primary Key Phrase *</label>
+                <input
+                  type="text"
+                  value={seoOptions.keyPhrase}
+                  onChange={(e) => setSeoOptions({...seoOptions, keyPhrase: e.target.value})}
+                  placeholder="e.g., professional web development services"
+                  className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">Keywords (comma-separated)</label>
+                <input
+                  type="text"
+                  value={seoOptions.keywords.join(', ')}
+                  onChange={(e) => setSeoOptions({...seoOptions, keywords: e.target.value.split(',').map(k => k.trim())})}
+                  placeholder="web development, responsive design, SEO optimization"
+                  className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">Page Title</label>
+                <input
+                  type="text"
+                  value={seoOptions.title}
+                  onChange={(e) => setSeoOptions({...seoOptions, title: e.target.value})}
+                  placeholder="Professional Web Development Services"
+                  className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">Meta Description</label>
+                <textarea
+                  value={seoOptions.description}
+                  onChange={(e) => setSeoOptions({...seoOptions, description: e.target.value})}
+                  placeholder="High-quality web development services with modern design and excellent user experience."
+                  rows="2"
+                  className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Author</label>
+                  <input
+                    type="text"
+                    value={seoOptions.author}
+                    onChange={(e) => setSeoOptions({...seoOptions, author: e.target.value})}
+                    placeholder="Your Name"
+                    className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-400 mb-1 block">Site Name</label>
+                  <input
+                    type="text"
+                    value={seoOptions.siteName}
+                    onChange={(e) => setSeoOptions({...seoOptions, siteName: e.target.value})}
+                    placeholder="CodeVibe"
+                    className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">Featured Image URL</label>
+                <input
+                  type="text"
+                  value={seoOptions.imageUrl}
+                  onChange={(e) => setSeoOptions({...seoOptions, imageUrl: e.target.value})}
+                  placeholder="https://example.com/images/featured.jpg"
+                  className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">Canonical URL</label>
+                <input
+                  type="text"
+                  value={seoOptions.url}
+                  onChange={(e) => setSeoOptions({...seoOptions, url: e.target.value})}
+                  placeholder="https://example.com"
+                  className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">Twitter Handle</label>
+                <input
+                  type="text"
+                  value={seoOptions.twitterHandle}
+                  onChange={(e) => setSeoOptions({...seoOptions, twitterHandle: e.target.value})}
+                  placeholder="@yourhandle"
+                  className="w-full p-2 rounded bg-gray-900 border border-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
+              </div>
+            </div>
+            <div className="p-4 bg-gray-900 rounded-b-lg flex justify-end space-x-2">
+              <button
+                onClick={() => setShowSEOModal(false)}
+                className="px-4 py-2 rounded-md text-sm bg-gray-600 hover:bg-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSEOOptimize}
+                disabled={isLoading}
+                className="px-4 py-2 rounded-md text-sm bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 flex items-center"
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Target className="w-4 h-4 mr-2" />}
+                Optimize
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
