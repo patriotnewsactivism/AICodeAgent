@@ -158,7 +158,7 @@ After deploying, verify everything works:
 
 ### Improvements to Existing Files
 
-- **`src/App.js`**:
+- **`src/App.jsx`**:
   - Fixed API URL (generativelace → generativelanguage)
   - Environment variable support
   - Keyboard shortcuts (Ctrl+S, F5, Ctrl+P, Ctrl+/)

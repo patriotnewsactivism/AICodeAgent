@@ -281,7 +281,7 @@ src/
 │   ├── ArchitectAgent.js       # Code review and quality
 │   ├── SEOAgent.js             # SEO optimization
 │   └── AgentOrchestrator.js    # Multi-agent coordination
-└── App.js                      # Main UI with agent integration
+└── App.jsx                     # Main UI with agent integration
 ```
 
 ### Agent Communication

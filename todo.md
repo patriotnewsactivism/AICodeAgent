@@ -1,4 +1,4 @@
-<content># AI Code Agent Enhancement Tasks
+# AI Code Agent Enhancement Tasks
 
 ## Completed Tasks
 - [x] Enhanced file explorer with folder support
@@ -31,4 +31,3 @@ All tasks have been completed successfully. The AI Code Agent application is now
 - Improved mobile UI
 - Dark/light mode toggle
 - Proper project structure with Vite configuration
-</content>
