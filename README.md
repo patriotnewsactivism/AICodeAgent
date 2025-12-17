@@ -156,7 +156,7 @@ AICodeAgent/
 │   │   ├── ArchitectAgent.js      # Code review & quality
 │   │   ├── SEOAgent.js            # SEO optimization
 │   │   └── AgentOrchestrator.js   # Multi-agent coordination
-│   ├── App.js              # Main application component (4 panels)
+│   ├── App.jsx             # Main application component (4 panels)
 │   └── main.jsx            # React 18 entry point
 ├── index.html              # Vite HTML template
 ├── vite.config.js          # Build configuration
@@ -171,7 +171,7 @@ AICodeAgent/
 
 | File | Purpose |
 |------|---------|
-| `App.js` | Main UI with AI agent, file explorer, editor, preview |
+| `App.jsx` | Main UI with AI agent, file explorer, editor, preview |
 | `vite.config.js` | Dev server (0.0.0.0:5173) & build optimization |
 | `package.json` | React 18, Vite 5, Lucide icons dependencies |
 
@@ -313,7 +313,7 @@ spec:
 ### Gemini API Setup
 
 1. **Get API Key**: [https://ai.google.dev](https://ai.google.dev)
-2. **Update `App.js`**:
+2. **Update `App.jsx`**:
    ```javascript
    const GEMINI_API_KEY = 'YOUR_API_KEY_HERE';
    ```
@@ -321,7 +321,7 @@ spec:
 
 ### Using Custom AI Models
 
-CodeVibe V2 is designed to work with any AI API. Replace the `callGeminiAPI` function in `App.js`:
+CodeVibe V2 is designed to work with any AI API. Replace the `callGeminiAPI` function in `App.jsx`:
 
 ```javascript
 // Example: OpenAI GPT-4
@@ -358,7 +358,7 @@ Built-in exponential backoff:
 
 ### Custom System Prompt
 
-Edit the `SYSTEM_PROMPT` in `App.js` to change AI behavior:
+Edit the `SYSTEM_PROMPT` in `App.jsx` to change AI behavior:
 
 ```javascript
 const SYSTEM_PROMPT = `You are an AI coding assistant for rights-tech projects.
@@ -377,7 +377,7 @@ and advocacy platforms. Prioritize accessibility and privacy.`;
 
 ### Extending with Plugins
 
-Create custom file handlers in `App.js`:
+Create custom file handlers in `App.jsx`:
 
 ```javascript
 // Example: Python syntax highlighting

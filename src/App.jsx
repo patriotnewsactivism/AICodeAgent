@@ -1,4 +1,4 @@
-<content>import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   FileCode, Play, Sparkles, Loader2, TriangleAlert, Bot, User, CornerDownLeft,
   Terminal, Github, FilePlus, Trash2, FolderGit2, UploadCloud, DownloadCloud,
@@ -1186,4 +1186,3 @@ export default function App() {
     </div>
   );
 }
-</content>

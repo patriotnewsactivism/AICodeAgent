@@ -53,7 +53,7 @@ The AI Code Agent is an intelligent coding assistant that allows users to genera
 ├── vite.config.js      # Vite configuration
 ├── package.json        # Project dependencies
 ├── src/
-│   ├── App.js          # Main React component
+│   ├── App.jsx         # Main React component
 │   └── main.jsx        # React entry point
 ├── README.md           # Project documentation
 └── FEATURES.md         # This file
