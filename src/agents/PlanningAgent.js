@@ -125,7 +125,7 @@ Please create a detailed implementation plan that breaks down this request into 
 `;
 
       const responseText = await this.callModel(prompt);
-      const result = JSON.parse(responseText);
+      const result = this.parseJsonResponse(responseText, 'PlanningAgent.process');
 
       this.log(`Plan created with ${result.tasks.length} tasks`, 'success');
       this.log(`Files to modify: ${result.fileStructure.modify.length}, create: ${result.fileStructure.new.length}`, 'info');
@@ -161,7 +161,7 @@ Please refine the plan based on this feedback. Maintain the same JSON structure 
 `;
 
       const responseText = await this.callModel(prompt);
-      const result = JSON.parse(responseText);
+      const result = this.parseJsonResponse(responseText, 'PlanningAgent.refinePlan');
 
       this.log('Plan refined successfully', 'success');
       return result;
@@ -194,7 +194,7 @@ Is this task completed successfully? Return JSON:
 `;
 
       const responseText = await this.callModel(prompt);
-      return JSON.parse(responseText);
+      return this.parseJsonResponse(responseText, 'PlanningAgent.validateTaskCompletion');
 
     } catch (error) {
       this.log(`Task validation failed: ${error.message}`, 'error');

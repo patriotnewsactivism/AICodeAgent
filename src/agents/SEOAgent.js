@@ -160,7 +160,7 @@ Please optimize this HTML with all SEO best practices including meta tags, Open 
 `;
 
       const responseText = await this.callModel(prompt);
-      const result = JSON.parse(responseText);
+      const result = this.parseJsonResponse(responseText, 'SEOAgent.process');
 
       this.log(`SEO optimization completed. Score: ${result.seoScore}/100`, 'success');
       this.log(`Applied ${result.changes.length} optimizations`, 'info');
@@ -201,7 +201,7 @@ Return a JSON object with:
 `;
 
       const responseText = await this.callModel(prompt);
-      const result = JSON.parse(responseText);
+      const result = this.parseJsonResponse(responseText, 'SEOAgent.analyzeSEO');
 
       this.log(`SEO analysis completed. Score: ${result.seoScore}/100`, 'success');
       return result;
@@ -230,7 +230,7 @@ Return a JSON object with:
 `;
 
       const responseText = await this.callModel(prompt);
-      return JSON.parse(responseText);
+      return this.parseJsonResponse(responseText, 'SEOAgent.extractKeywords');
 
     } catch (error) {
       this.log(`Keyword extraction failed: ${error.message}`, 'error');

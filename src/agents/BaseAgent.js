@@ -69,6 +69,93 @@ export class BaseAgent {
   }
 
   /**
+   * Parse JSON responses with fallback extraction.
+   */
+  parseJsonResponse(rawText, context = 'JSON response') {
+    const text = typeof rawText === 'string' ? rawText.trim() : '';
+    if (!text) {
+      throw new Error(`${context}: empty response.`);
+    }
+
+    const cleaned = text.replace(/^\uFEFF/, '');
+    const candidates = [cleaned];
+    const fencedMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (fencedMatch?.[1]) {
+      candidates.push(fencedMatch[1].trim());
+    }
+
+    const extracted = this.extractJsonSubstring(cleaned);
+    if (extracted) {
+      candidates.push(extracted);
+    }
+
+    let lastError = null;
+    for (const candidate of candidates) {
+      try {
+        return JSON.parse(candidate);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    const preview = cleaned.length > 500 ? `${cleaned.slice(0, 500)}...` : cleaned;
+    const reason = lastError ? lastError.message : 'Unknown parse error';
+    throw new Error(`${context}: failed to parse JSON response (${reason}). Response preview: ${preview}`);
+  }
+
+  /**
+   * Extract the first JSON object/array from a string.
+   */
+  extractJsonSubstring(text) {
+    const start = text.search(/[{\[]/);
+    if (start === -1) {
+      return null;
+    }
+
+    let depth = 0;
+    let inString = false;
+    let escaping = false;
+
+    for (let i = start; i < text.length; i++) {
+      const char = text[i];
+
+      if (inString) {
+        if (escaping) {
+          escaping = false;
+          continue;
+        }
+        if (char === '\\') {
+          escaping = true;
+          continue;
+        }
+        if (char === '"') {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (char === '"') {
+        inString = true;
+        continue;
+      }
+
+      if (char === '{' || char === '[') {
+        depth += 1;
+      } else if (char === '}' || char === ']') {
+        depth -= 1;
+        if (depth === 0) {
+          return text.slice(start, i + 1);
+        }
+        if (depth < 0) {
+          return null;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Process a task - to be overridden by subclasses
    */
   async process(input) {

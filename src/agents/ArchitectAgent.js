@@ -198,7 +198,7 @@ Provide a comprehensive code review with scores, issues, and actionable recommen
 `;
 
       const responseText = await this.callModel(prompt);
-      const result = JSON.parse(responseText);
+      const result = this.parseJsonResponse(responseText, 'ArchitectAgent.process');
 
       this.log(`Code review completed. Overall score: ${result.overallScore}/100`, 'success');
       this.log(`Found ${result.issues.length} issues`, 'info');
@@ -260,7 +260,7 @@ Return JSON with:
 `;
 
       const responseText = await this.callModel(prompt);
-      const result = JSON.parse(responseText);
+      const result = this.parseJsonResponse(responseText, 'ArchitectAgent.securityAudit');
 
       this.log(`Security audit completed. Score: ${result.securityScore}/100`, 'success');
       return result;
@@ -307,7 +307,7 @@ Return JSON with:
 `;
 
       const responseText = await this.callModel(prompt);
-      const result = JSON.parse(responseText);
+      const result = this.parseJsonResponse(responseText, 'ArchitectAgent.performanceAnalysis');
 
       this.log(`Performance analysis completed. Score: ${result.performanceScore}/100`, 'success');
       return result;
@@ -366,7 +366,7 @@ Return JSON with:
 `;
 
       const responseText = await this.callModel(prompt);
-      const result = JSON.parse(responseText);
+      const result = this.parseJsonResponse(responseText, 'ArchitectAgent.accessibilityReview');
 
       this.log(`Accessibility review completed. Score: ${result.accessibilityScore}/100`, 'success');
       return result;
@@ -408,7 +408,7 @@ Return JSON with:
 `;
 
       const responseText = await this.callModel(prompt);
-      const result = JSON.parse(responseText);
+      const result = this.parseJsonResponse(responseText, 'ArchitectAgent.suggestRefactoring');
 
       this.log('Refactoring suggestions generated', 'success');
       return result;

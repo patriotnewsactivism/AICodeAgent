@@ -166,7 +166,7 @@ Please generate the necessary code to fulfill these requirements. Create or modi
 `;
 
       const responseText = await this.callModel(prompt);
-      const result = JSON.parse(responseText);
+      const result = this.parseJsonResponse(responseText, 'CodingAgent.process');
 
       this.log(`Code generated: ${result.operations.length} file operations`, 'success');
       this.log(`Summary: ${result.summary}`, 'info');
@@ -205,7 +205,7 @@ Please identify the bug and provide the fixed code. Return the standard JSON for
 `;
 
       const responseText = await this.callModel(prompt);
-      const result = JSON.parse(responseText);
+      const result = this.parseJsonResponse(responseText, 'CodingAgent.fixBug');
 
       this.log('Bug fixed successfully', 'success');
       return result;
@@ -238,7 +238,7 @@ Please refactor this code following best practices. Return the standard JSON for
 `;
 
       const responseText = await this.callModel(prompt);
-      const result = JSON.parse(responseText);
+      const result = this.parseJsonResponse(responseText, 'CodingAgent.refactor');
 
       this.log('Refactoring completed', 'success');
       return result;
@@ -272,7 +272,7 @@ Please implement this feature. Create new files if needed or modify existing one
 `;
 
       const responseText = await this.callModel(prompt);
-      const result = JSON.parse(responseText);
+      const result = this.parseJsonResponse(responseText, 'CodingAgent.addFeature');
 
       this.log('Feature added successfully', 'success');
       return result;
